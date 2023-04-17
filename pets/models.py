@@ -1,7 +1,6 @@
 from django.db import models
 
 # Create your models here.
-# pets
 from django.db import models
 
 
@@ -20,7 +19,7 @@ class Pet(models.Model):
     )
 
     group = models.ForeignKey(
-        "groups.Group", on_delete=models.RESTRICT, related_name="pets", null=True
+        "groups.Group", on_delete=models.PROTECT, related_name="pets", null=True
     )
 
     def __repr__(self) -> str:
