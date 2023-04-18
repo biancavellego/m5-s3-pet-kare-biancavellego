@@ -1,3 +1,8 @@
-from django.shortcuts import render
+from rest_framework.views import APIView, Request, Response, status
+from traits.models import Trait
+from traits.serializers import TraitSerializer
+import ipdb
 
-# Create your views here.
+
+class TraitView(APIView):
+    ...
