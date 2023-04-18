@@ -15,9 +15,6 @@ class PetView(APIView):
         pets = Pet.objects.all()
         serializer = PetSerializer(instance=pets, many=True)
 
-        if not serializer.is_valid():
-            return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
-
         return Response(serializer.data, status.HTTP_200_OK)
 
     def post(self, request: Request) -> Response:
@@ -36,14 +33,18 @@ class PetView(APIView):
         # OBS: It's necessary to separate group and traits fields from the
         # dictionary in order to serialize them.
 
-        if not serializer.is_valid():
-            return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        # Same as below, but less verbose:
+        # if not serializer.is_valid():
+        #     return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
 
         group_data = serializer.validated_data.pop("group")
         traits_data = serializer.validated_data.pop("traits")
 
         pet_object = Pet.objects.create(**serializer.validated_data)
         Group.objects.create(**group_data, pet=pet_object)
+
+        # Fazer for = traits é uma lista de dicts
         Trait.objects.create(**traits_data, pet=pet_object)
 
         # Formatting output object:
@@ -61,12 +62,21 @@ class PetDetailView(APIView):
 
     def patch(self, request: Request, pet_id: id) -> Response:
         pet = get_object_or_404(Pet, id=pet_id)
-        serializer = PetSerializer(instance=pet)
+        serializer = PetSerializer(data=request.data, partial=True)
 
-        return Response({"message": "patch id route"}, status.HTTP_200_OK)
+        serializer.is_valid(raise_exception=True)
+
+        # OBS: serializer.validated_data is a dict.
+        for key, value in serializer.validated_data.items():
+            setattr(pet, key, value)
+
+        pet.save()
+        serializer = PetSerializer(pet)
+
+        return Response(serializer.data, status.HTTP_200_OK)
 
     def delete(self, request: Request, pet_id: id) -> Response:
         pet = get_object_or_404(Pet, id=pet_id)
-        serializer = PetSerializer(instance=pet)
+        pet.delete()
 
-        return Response(status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_204_NO_CONTENT)
