@@ -8,10 +8,12 @@ class PetView(APIView):
     def get(self, request: Request) -> Response:
         # QuerySet
         pets = Pet.objects.all()
+        serializer = PetSerializer(instance=pets, many=True)
 
-        return Response({"message": "Get Route"})
+        return Response(data=serializer.data, status.HTTP_200_OK)
 
     def post(self, request: Request) -> Response:
+
         # Validating input data:
         serializer = PetSerializer(data=request.data)
 
