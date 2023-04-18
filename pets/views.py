@@ -24,7 +24,7 @@ class PetView(APIView):
         # Validating input data:
         serializer = PetSerializer(data=request.data)
 
-        # full_pet_data = {
+        # request.data = {
         #     "name": "Strogonoff",
         #     "age": 4,
         #     "weight": 5,
@@ -33,16 +33,18 @@ class PetView(APIView):
         #     "traits": [{"trait_name": "curious"}, {"trait_name": "hairy"}],
         # }
 
+        # OBS: It's necessary to separate group and traits fields from the
+        # dictionary in order to serialize them.
+
         if not serializer.is_valid():
             return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
 
-        print(serializer.validated_data)
+        group_data = serializer.validated_data.pop("group")
+        traits_data = serializer.validated_data.pop("traits")
 
-        # group_data = serializer.validated_data.pop("groups")
-        # traits_data = serializer.validated_data.pop("traits")
         pet_object = Pet.objects.create(**serializer.validated_data)
-        # Group.objects.create(**group_data, pet=pet_object)
-        # Trait.objects.create(**traits_data, pet=pet_object)
+        Group.objects.create(**group_data, pet=pet_object)
+        Trait.objects.create(**traits_data, pet=pet_object)
 
         # Formatting output object:
         serializer = PetSerializer(instance=pet_object)
