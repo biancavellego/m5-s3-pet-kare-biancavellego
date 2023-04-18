@@ -15,6 +15,9 @@ class PetView(APIView):
         pets = Pet.objects.all()
         serializer = PetSerializer(instance=pets, many=True)
 
+        if not serializer.is_valid():
+            return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
+
         return Response(serializer.data, status.HTTP_200_OK)
 
     def post(self, request: Request) -> Response:
