@@ -4,34 +4,23 @@ from pets.models import Pet
 from groups.models import Group
 from traits.models import Trait
 from pets.serializers import PetSerializer
-from groups.serializers import GroupSerializer
-from traits.serializers import TraitSerializer
+from rest_framework.pagination import PageNumberPagination
 import ipdb
 
 
-class PetView(APIView):
+class PetView(APIView, PageNumberPagination):
     def get(self, request: Request) -> Response:
         # QuerySet
         pets = Pet.objects.all()
-        serializer = PetSerializer(instance=pets, many=True)
+        result_page = self.paginate_queryset(pets, request)
 
-        return Response(serializer.data, status.HTTP_200_OK)
+        serializer = PetSerializer(result_page, many=True)
+
+        return self.get_paginated_response(serializer.data)
 
     def post(self, request: Request) -> Response:
         # Validating input data:
         serializer = PetSerializer(data=request.data)
-
-        # request.data = {
-        #     "name": "Strogonoff",
-        #     "age": 4,
-        #     "weight": 5,
-        #     "sex": "Female",
-        #     "group": {"scientific_name": "Felis catus"},
-        #     "traits": [{"trait_name": "curious"}, {"trait_name": "hairy"}],
-        # }
-
-        # OBS: It's necessary to separate group and traits fields from the
-        # dictionary in order to serialize them.
 
         serializer.is_valid(raise_exception=True)
         # Same as below, but less verbose:
@@ -41,11 +30,31 @@ class PetView(APIView):
         group_data = serializer.validated_data.pop("group")
         traits_data = serializer.validated_data.pop("traits")
 
-        pet_object = Pet.objects.create(**serializer.validated_data)
-        Group.objects.create(**group_data, pet=pet_object)
+        group = Group.objects.filter(
+            scientific_name__iexact=group_data["scientific_name"]
+        ).first()
 
-        # Fazer for = traits é uma lista de dicts
-        Trait.objects.create(**traits_data, pet=pet_object)
+        if not group:
+            group = Group.objects.create(**group_data)
+
+        pet_object = Pet.objects.create(
+            **serializer.validated_data,
+            group=group,
+        )
+
+        # OBS: traits_data is a list of dicts.
+        for trait_dict in traits_data:
+            trait = Trait.objects.filter(name__iexact=trait_dict["name"]).first()
+
+            if not trait:
+                # It's not possible to directly attribute a value to
+                # a table in N:N relations. Therefore you need to use
+                # .add() method.
+                # In traits.models, the FK is called "pets", which
+                # we need to reference so .add() method can work.
+                trait = Trait.objects.create(**trait_dict)
+
+            trait.pets.add(pet_object)
 
         # Formatting output object:
         serializer = PetSerializer(instance=pet_object)

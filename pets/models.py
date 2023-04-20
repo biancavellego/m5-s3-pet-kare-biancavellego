@@ -13,6 +13,7 @@ class Pet(models.Model):
     weight = models.FloatField()
     sex = models.CharField(max_length=20, choices=Sex.choices, default=Sex.NOT_INFORMED)
 
+    # And on the "Many" side of the relationship we add the FK:
     group = models.ForeignKey(
         "groups.Group",
         on_delete=models.PROTECT,
