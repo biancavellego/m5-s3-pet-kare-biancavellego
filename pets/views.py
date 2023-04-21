@@ -12,7 +12,13 @@ class PetView(APIView, PageNumberPagination):
     def get(self, request: Request) -> Response:
         # QuerySet
         pets = Pet.objects.all()
+        param_trait = request.query_params.get("trait", None)
         result_page = self.paginate_queryset(pets, request)
+
+        if param_trait:
+            pets_by_trait = Pet.objects.filter(traits__name__icontains=param_trait)
+            result_page = self.paginate_queryset(pets_by_trait, request)
+            serializer = PetSerializer(result_page, many=True)
 
         serializer = PetSerializer(result_page, many=True)
 
@@ -74,6 +80,35 @@ class PetDetailView(APIView):
         serializer = PetSerializer(data=request.data, partial=True)
 
         serializer.is_valid(raise_exception=True)
+
+        group_data = serializer.validated_data.pop("group", None)
+        traits_data = serializer.validated_data.pop("traits", None)
+
+        if group_data:
+            try:
+                group_object = Group.objects.get(
+                    scientific_name__iexact=group_data["scientific_name"]
+                )
+
+            except Group.DoesNotExist:
+                group_object = Group.objects.create(
+                    **group_data,
+                )
+            pet.group = group_object
+
+        if traits_data:
+            trait_object = []
+
+            for trait_dict in traits_data:
+                try:
+                    trait = Trait.objects.get(name__iexact=trait_dict["name"])
+
+                except Trait.DoesNotExist:
+                    trait = Trait.objects.create(**trait_dict)
+
+                trait_object.append(trait)
+
+            pet.traits.set(trait_object)
 
         # OBS: serializer.validated_data is a dict.
         for key, value in serializer.validated_data.items():
